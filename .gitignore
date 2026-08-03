@@ -1,0 +1,16 @@
+# Never commit credentials, local secrets, or private certificates.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+credentials/
+secrets/
+
+# Local tooling files
+.DS_Store
+Thumbs.db
