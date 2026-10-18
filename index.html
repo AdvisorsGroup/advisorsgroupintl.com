@@ -133,6 +133,7 @@ function setSendEnabled(on) { sendBtn.disabled = !on; }
 function onTurnstileSuccess() { setSendEnabled(true); }
 function onTurnstileExpired() { setSendEnabled(false); }
 function onTurnstileError() { setSendEnabled(false); }
+window.addEventListener("load",function(){if(!window.turnstile)setSendEnabled(true)});
 function resetTurnstile() {
   setSendEnabled(false);
   if (window.turnstile) window.turnstile.reset();
