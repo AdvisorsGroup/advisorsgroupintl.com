@@ -111,8 +111,8 @@
       <label class="optin"><input type="checkbox" id="sms_optin" name="sms_optin" value="yes">
         <span>I agree to receive text messages from Advisors Group International Inc under the <strong>Client Care Notifications</strong> program (appointment reminders, responses to inquiries, status updates, and requests for missing information). Message frequency varies. Message and data rates may apply. Reply STOP to cancel, HELP for help. Consent is not a condition of any purchase. See our <a href="/privacy.html">Privacy Policy</a> and <a href="/terms.html">Terms of Use</a>.</span></label>
       <input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-10000px">
-      <div class="cf-turnstile" data-sitekey="0x4AAAAAAD8MVIhSPLH80f6N" data-theme="auto"></div>
-      <div><button type="submit">Send Message</button><div id="form-status" role="status"></div></div>
+      <div class="cf-turnstile" data-sitekey="0x4AAAAAAD8MVIhSPLH80f6N" data-theme="auto" data-callback="onTurnstileSuccess" data-expired-callback="onTurnstileExpired" data-error-callback="onTurnstileError"></div>
+      <div><button type="submit" disabled>Send Message</button><div id="form-status" role="status"></div></div>
     </form>
   </div>
 </section>
@@ -126,18 +126,47 @@
 
 <script>
 const ENDPOINT = "https://agii-vapi-bridge-9383.twil.io/web-contact"; // set to agii-vapi-bridge /web-contact URL on deploy
-document.getElementById("contact-form").addEventListener("submit", async (e) => {
+const form = document.getElementById("contact-form");
+const sendBtn = form.querySelector('button[type="submit"]');
+let submitting = false;
+function setSendEnabled(on) { sendBtn.disabled = !on; }
+function onTurnstileSuccess() { setSendEnabled(true); }
+function onTurnstileExpired() { setSendEnabled(false); }
+function onTurnstileError() { setSendEnabled(false); }
+window.addEventListener("load",function(){if(!window.turnstile)setSendEnabled(true)});
+function resetTurnstile() {
+  setSendEnabled(false);
+  if (window.turnstile) window.turnstile.reset();
+}
+const existingToken = form.querySelector("[name='cf-turnstile-response']");
+if ((existingToken && existingToken.value) || (typeof window.turnstile?.getResponse === "function" && window.turnstile.getResponse())) {
+  setSendEnabled(true);
+}
+form.addEventListener("submit", async (e) => {
   e.preventDefault();
+  if (submitting) return;
   const f = e.target, s = document.getElementById("form-status");
   const data = Object.fromEntries(new FormData(f).entries());
   data.business = "AGII"; data.source = "advisorsgroupintl.com";
+  const tokenEl = f.querySelector("[name='cf-turnstile-response']");
+  const token = (tokenEl && tokenEl.value) || (typeof window.turnstile?.getResponse === "function" && window.turnstile.getResponse()) || "";
+  data["cf-turnstile-response"] = token;
   if (!data.email && !data.phone) { s.textContent = "Please provide an email or a phone number so we can reach you."; return; }
+  if (!token) { s.textContent = "Please wait for the verification check to finish, then press Send."; return; }
   if (ENDPOINT.startsWith("PENDING")) { s.textContent = "Our online form is being upgraded — please call or text (936) 448-5900."; return; }
+  submitting = true;
+  setSendEnabled(false);
   try {
     const r = await fetch(ENDPOINT, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(data) });
     if (!r.ok) throw 0;
     f.reset(); s.textContent = "Thank you — your message has been received. We'll be in touch shortly.";
-  } catch { s.textContent = "Something went wrong. Please call or text (936) 448-5900."; }
+    resetTurnstile();
+  } catch {
+    s.textContent = "Something went wrong. Please call or text (936) 448-5900.";
+    resetTurnstile();
+  } finally {
+    submitting = false;
+  }
 });
 </script>
 </body>
